@@ -30,8 +30,8 @@ load_env()
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 
-# Working model on HF router (confirmed)
-HF_API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
+# Pollinations AI — completely free, no token, no credits needed
+POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}?width=512&height=512&nologo=true&model=flux"
 
 PORT = 8080
 
@@ -75,28 +75,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             user_prompt = body.get("prompt", "mandala art")
 
-            # Build a strong mandala prompt
             full_prompt = (
                 f"highly detailed mandala art, {user_prompt}, "
                 "symmetrical, intricate geometric patterns, zentangle, "
-                "sacred geometry, black and white, high quality, 4k"
+                "sacred geometry, high quality, 4k"
             )
 
-            payload = json.dumps({"inputs": full_prompt}).encode()
+            import urllib.parse
+            encoded = urllib.parse.quote(full_prompt)
+            url = POLLINATIONS_URL.format(prompt=encoded)
 
-            req = urllib.request.Request(
-                HF_API_URL,
-                data=payload,
-                method="POST",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {HF_TOKEN}",
-                }
-            )
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
 
             with OPENER.open(req) as resp:
                 image_bytes = resp.read()
-                # HF returns raw image bytes (PNG)
                 b64 = base64.b64encode(image_bytes).decode("utf-8")
                 self._json(200, {"image": b64})
 
