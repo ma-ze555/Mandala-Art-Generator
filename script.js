@@ -1,34 +1,35 @@
-// All requests go to our local Python proxy (server.py)
-const HEADERS = { "Content-Type": "application/json" };
+// Pollinations AI — free, no token, called directly from browser
+const POLLINATIONS_URL = "https://image.pollinations.ai/prompt";
 
-// Generate image via local proxy → Hugging Face API
 async function generateImage(prompt) {
-  const response = await fetch("/api/generate", {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify({ prompt })
+  const full_prompt = (
+    `highly detailed mandala art, ${prompt}, ` +
+    "symmetrical, intricate geometric patterns, zentangle, " +
+    "sacred geometry, high quality, 4k"
+  );
+
+  const encoded = encodeURIComponent(full_prompt);
+  const url = `${POLLINATIONS_URL}/${encoded}?width=512&height=512&nologo=true&model=flux&seed=${Date.now()}`;
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Image generation failed (${response.status})`);
+
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result); // returns data:image/png;base64,...
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
-  }
-  return data;
 }
 
-// Display the base64 image returned from the server
-function displayImage(data) {
-  const b64 = data.image;
-  if (!b64) throw new Error("No image data in response");
-
+function displayImage(src) {
   const resultImg = document.getElementById("resultImage");
-  resultImg.src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+  resultImg.src = src;
   resultImg.classList.remove("d-none");
   document.getElementById("actionButtons").classList.remove("d-none");
 }
 
-// Download the generated image
 function downloadImage() {
   const resultImg = document.getElementById("resultImage");
   if (!resultImg.src || resultImg.src === window.location.href) return;
@@ -40,7 +41,6 @@ function downloadImage() {
   document.body.removeChild(link);
 }
 
-// Share via Web Share API
 function shareImage() {
   const resultImg = document.getElementById("resultImage");
   if (!resultImg.src || resultImg.src === window.location.href) return;
@@ -58,7 +58,6 @@ function shareImage() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Style chip selection
   const optionChips = document.querySelectorAll(".option-chip");
   let selectedStyle = "Monochrome";
   if (optionChips.length > 0) optionChips[0].classList.add("active");
@@ -86,7 +85,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const prompt = `${rawPrompt} in ${selectedStyle.toLowerCase()} style`;
 
-    // Reset UI
     loadingText.classList.remove("d-none");
     generateBtn.disabled = true;
     resultImg.classList.add("d-none");
@@ -95,8 +93,8 @@ document.addEventListener("DOMContentLoaded", function () {
     analysisContainer.innerHTML = "";
 
     try {
-      const result = await generateImage(prompt);
-      displayImage(result);
+      const imgSrc = await generateImage(prompt);
+      displayImage(imgSrc);
     } catch (error) {
       console.error("Generation error:", error);
       alert(`Error: ${error.message}`);
