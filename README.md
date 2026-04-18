@@ -39,3 +39,6 @@ http://localhost:8080
 - A free Hugging Face account and API token
 
 ## Developed by Code Club
+🌍 Live Website: 
+<br>
+https://mandala-art-generator-hazel.vercel.app/
